@@ -2,5 +2,8 @@
   "watch": ["src", ".env"],
   "ext": ".ts,.js",
   "ignore": [],
-  "exec": "tsx ./src/index.ts"
+  "exec": "tsx ./src/index.ts",
+   "execMap": {
+      "ts": "node --env-file=.env"
+    }
 }

@@ -56,3 +56,11 @@ export const errorConverter = (err: Error | AxiosError, req: Request, res: Respo
   }
   next(error as Error);
 };
+
+export const notFoundHandler = (req: Request, res: Response, next: NextFunction) => {
+  res.status(HttpStatusCode.NotFound).json({
+    statusCode: 404,
+    message: `Route ${req.originalUrl} not found`
+  });
+  next();
+};

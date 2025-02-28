@@ -28,4 +28,29 @@ const registerUser = async (req: Request, res: Response) => {
   }
 };
 
-export default { registerUser };
+const loginUser = async (req: Request, res: Response) => {
+  try {
+    const user = req.body;
+    const token = await userService.signIn(user);
+    res.status(HttpStatusCode.Ok).json({
+      statusCode: HttpStatusCode.Ok,
+      message: "Login successfully",
+      data: token
+    });
+  } catch (error: unknown) {
+    let statusCode = HttpStatusCode.InternalServerError;
+    let message = "Internal Server Error";
+    if (error instanceof Error) {
+      message = error.message;
+      if (message.includes("not found") || message.includes("incorrect")) {
+        statusCode = HttpStatusCode.BadRequest;
+      }
+    }
+    res.status(statusCode).json({
+      statusCode: statusCode,
+      message,
+      path: req.originalUrl
+    });
+  }
+};
+export default { registerUser, loginUser };

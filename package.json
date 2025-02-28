@@ -33,9 +33,12 @@
     "typescript-eslint": "^8.25.0"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.9",
     "axios": "^1.8.1",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.13.1",
     "mongoose": "^8.10.2",
     "server": "file:",
