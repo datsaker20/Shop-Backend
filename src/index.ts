@@ -1,8 +1,9 @@
+import { HttpStatusCode } from "axios";
 import bodyParser from "body-parser";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { connectDB } from "./config/dbConfig";
 import { logDate } from "./constants/logDate";
-import { corsHeader as cors, notFoundHandler } from "./middlewares/validation.middlewares";
+import { ApiError, corsHeader as cors } from "./middlewares/validation.middlewares";
 import routers from "./routes/index.routes";
 import logger from "./utils/logger";
 
@@ -16,7 +17,9 @@ app.use(cors);
 app.use("/api/v1", routers);
 connectDB();
 
-app.use(notFoundHandler);
+app.use((req: Request, res: Response, next: NextFunction) => {
+  next(new ApiError(HttpStatusCode.NotFound, "Non-existent API"));
+});
 app.listen(PORT, () => {
   logger.info(`${logDate} Server running on port ${PORT}`);
 });

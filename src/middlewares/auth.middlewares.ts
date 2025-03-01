@@ -1,4 +1,7 @@
+import { HttpStatusCode } from "axios";
 import dotenv from "dotenv";
+import { NextFunction, Request, Response } from "express";
+import Joi from "joi";
 import jwt from "jsonwebtoken";
 import { Role } from "~/constants/enum";
 import { IToken } from "~/constants/interface";
@@ -16,7 +19,7 @@ export const generateToken = (user: IUser): IToken => {
   const accessToken = jwt.sign(
     { id: user.id, email: user.email, userName: user.userName, isAdmin: user.role === Role.ADMIN },
     secretKey,
-    { expiresIn: "7d"}
+    { expiresIn: "7d" }
   );
   const refreshToken = jwt.sign({ id: user.id }, secretKey, { expiresIn: "30d" });
 
@@ -29,4 +32,49 @@ export const generateToken = (user: IUser): IToken => {
     iat: decoded?.iat ?? Math.floor(Date.now() / 1000),
     exp: decoded?.exp ?? Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
   };
+};
+
+export const verifyToken = (roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({ message: "Bearer token is missing" });
+      return;
+    }
+
+    try {
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as jwt.JwtPayload;
+      req.user = decoded as IUser;
+      if (decoded.isAdmin && roles.includes("Admin")) {
+        next();
+        return;
+      }
+      if (!decoded.isAdmin && roles.includes("User")) {
+        next();
+        return;
+      }
+      res.status(HttpStatusCode.Forbidden).json({
+        statusCode: HttpStatusCode.Forbidden,
+        message: "Permission denied",
+        path: req.originalUrl
+      });
+    } catch (error) {
+      res.status(HttpStatusCode.Forbidden).json({
+        statusCode: HttpStatusCode.Forbidden,
+        message: `Authentication failed: ${(error as Error).message}`,
+        path: req.originalUrl
+      });
+    }
+  };
+};
+export const registerValidator = (user: IUser) => {
+  const rule = Joi.object({
+    userName: Joi.string().required().min(6).max(30),
+    fullName: Joi.string().required(),
+    email: Joi.string().required().email(),
+    password: Joi.string().required().min(6)
+  });
+
+  return rule.validate(user);
 };

@@ -4,8 +4,7 @@ import userService from "~/services/users.services";
 
 const registerUser = async (req: Request, res: Response) => {
   try {
-    const user = req.body;
-    const newUser = await userService.registerUser(user);
+    const newUser = await userService.registerUser(req.body);
     res.status(HttpStatusCode.Created).json({
       statusCode: HttpStatusCode.Created,
       message: "User registered successfully",
@@ -53,4 +52,27 @@ const loginUser = async (req: Request, res: Response) => {
     });
   }
 };
-export default { registerUser, loginUser };
+
+const getAllUsers = async (req: Request, res: Response) => {
+  try {
+    const users = await userService.getAllUsers();
+    res.status(HttpStatusCode.Ok).json({
+      statusCode: HttpStatusCode.Ok,
+      message: "Get all users successfully",
+      data: users
+    });
+  } catch (error: unknown) {
+    const statusCode = HttpStatusCode.InternalServerError;
+    let message = "Internal Server Error";
+    if (error instanceof Error) {
+      message = error.message;
+    }
+    res.status(statusCode).json({
+      statusCode,
+      message,
+      path: req.originalUrl
+    });
+  }
+};
+
+export default { registerUser, loginUser, getAllUsers };
