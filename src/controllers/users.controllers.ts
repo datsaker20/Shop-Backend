@@ -4,11 +4,10 @@ import userService from "~/services/users.services";
 
 const registerUser = async (req: Request, res: Response) => {
   try {
-    const newUser = await userService.registerUser(req.body);
+    await userService.registerUser(req.body);
     res.status(HttpStatusCode.Created).json({
       statusCode: HttpStatusCode.Created,
-      message: "User registered successfully",
-      data: newUser
+      message: "User registered successfully, please check your email to verify"
     });
   } catch (error: unknown) {
     let statusCode = HttpStatusCode.InternalServerError;
@@ -31,6 +30,11 @@ const loginUser = async (req: Request, res: Response) => {
   try {
     const user = req.body;
     const token = await userService.signIn(user);
+    res.cookie("refreshToken", token.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict"
+    });
     res.status(HttpStatusCode.Ok).json({
       statusCode: HttpStatusCode.Ok,
       message: "Login successfully",
@@ -53,6 +57,60 @@ const loginUser = async (req: Request, res: Response) => {
   }
 };
 
+const verifyEmail = async (req: Request, res: Response) => {
+  try {
+    const token = req.params.token;
+    await userService.verifyEmail(token);
+
+    res.status(HttpStatusCode.Ok).json({
+      statusCode: HttpStatusCode.Ok,
+      message: "Email verified successfully"
+    });
+  } catch (error: unknown) {
+    let statusCode = HttpStatusCode.InternalServerError;
+    let message = "Internal Server Error";
+    if (error instanceof Error) {
+      message = error.message;
+      if (message.includes("not found")) {
+        statusCode = HttpStatusCode.BadRequest;
+      }
+    }
+    res.status(statusCode).json({
+      statusCode: statusCode,
+      message,
+      path: req.originalUrl
+    });
+  }
+};
+
+const logoutUser = async (req: Request, res: Response) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      throw new Error("Token is missing");
+    }
+    const result = await userService.logoutUser(token);
+    if (result) {
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict"
+      });
+      res.status(HttpStatusCode.Ok).json({ statusCode: HttpStatusCode.Ok, message: "Logout successfully" });
+    }
+  } catch (error) {
+    const statusCode = HttpStatusCode.InternalServerError;
+    let message = "Internal Server Error";
+    if (error instanceof Error) {
+      message = error.message;
+    }
+    res.status(statusCode).json({
+      statusCode: statusCode,
+      message,
+      path: req.originalUrl
+    });
+  }
+};
 const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await userService.getAllUsers();
@@ -75,4 +133,4 @@ const getAllUsers = async (req: Request, res: Response) => {
   }
 };
 
-export default { registerUser, loginUser, getAllUsers };
+export default { registerUser, loginUser, verifyEmail, getAllUsers, logoutUser };

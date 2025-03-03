@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import { Role } from "~/constants/enum";
 import { IToken } from "~/constants/interface";
 import { IUser } from "~/models/db/User";
+import redisClient from "~/utils/redis";
 dotenv.config();
 
 export const generateToken = (user: IUser): IToken => {
@@ -22,10 +23,7 @@ export const generateToken = (user: IUser): IToken => {
     { expiresIn: "7d" }
   );
   const refreshToken = jwt.sign({ id: user.id }, secretKey, { expiresIn: "30d" });
-
   const decoded = jwt.decode(accessToken) as jwt.JwtPayload;
-  console.log(decoded);
-
   return {
     token: accessToken,
     refreshToken,
@@ -35,7 +33,7 @@ export const generateToken = (user: IUser): IToken => {
 };
 
 export const verifyToken = (roles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       res.status(401).json({ message: "Bearer token is missing" });
@@ -46,6 +44,15 @@ export const verifyToken = (roles: string[]) => {
       const token = authHeader.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as jwt.JwtPayload;
       req.user = decoded as IUser;
+      // Check if token is blacklisted
+      const isBlacklisted = await redisClient.get(`blacklist:${token}`);
+      if (isBlacklisted) {
+        res.status(HttpStatusCode.Unauthorized).json({
+          statusCode: HttpStatusCode.Unauthorized,
+          message: "Token is blacklisted"
+        });
+        return;
+      }
       if (decoded.isAdmin && roles.includes("Admin")) {
         next();
         return;
@@ -65,6 +72,7 @@ export const verifyToken = (roles: string[]) => {
         message: `Authentication failed: ${(error as Error).message}`,
         path: req.originalUrl
       });
+      return;
     }
   };
 };

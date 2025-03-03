@@ -1,6 +1,5 @@
 import { Document, model, Schema } from "mongoose";
 import { Role } from "~/constants/enum";
-
 export interface IUser extends Document {
   userName: string;
   fullName: string;
@@ -11,12 +10,9 @@ export interface IUser extends Document {
   address?: string;
   avatar?: string;
   isDelete: boolean;
+  isVerify: boolean;
 }
-declare module "express-serve-static-core" {
-  interface Request {
-    user?: IUser;
-  }
-}
+
 const userSchema = new Schema<IUser>(
   {
     userName: { type: String, required: true, unique: true, rim: true, minlength: 6, maxlength: 30 },
@@ -27,7 +23,8 @@ const userSchema = new Schema<IUser>(
     phone: { type: String, maxLength: 10 },
     address: { type: String, maxLength: 255 },
     avatar: { type: String },
-    isDelete: { type: Boolean, default: false }
+    isDelete: { type: Boolean, default: false },
+    isVerify: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

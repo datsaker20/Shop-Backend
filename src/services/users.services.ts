@@ -1,8 +1,12 @@
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { ObjectId } from "mongoose";
 import { IToken, IUserLogin } from "~/constants/interface";
 import { generateToken, registerValidator } from "~/middlewares/auth.middlewares";
 import { IUser, User } from "~/models/db/User";
+import { sendVerificationEmail } from "~/utils/email";
+import redisClient from "~/utils/redis";
+
 const registerUser = async (user: IUser): Promise<IUser> => {
   const existingUser = await User.findOne({ email: user.email }).select("_id");
   const existingUserName = await User.findOne({ userName: user.userName }).select("_id");
@@ -20,6 +24,8 @@ const registerUser = async (user: IUser): Promise<IUser> => {
   const hashedPassword = bcrypt.hashSync(user.password, salt);
   const newUser = new User({ ...user, password: hashedPassword });
   await newUser.save();
+  const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET_KEY as string, { expiresIn: "1h" });
+  await sendVerificationEmail(user.email, token);
   return newUser;
 };
 
@@ -41,6 +47,26 @@ const signIn = async (user: IUserLogin): Promise<IToken> => {
     throw new Error(`Authentication failed: ${(error as Error).message}`);
   }
 };
+const logoutUser = async (token: string): Promise<boolean> => {
+  // Remove token from blacklist
+  const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as jwt.JwtPayload;
+
+  const exp = decoded.exp ?? Math.floor(Date.now() / 1000) + 3600; //
+  // Set token to blacklist
+  const result = await redisClient.set(`blacklist:${token}`, "logout", {
+    EX: exp - Math.floor(Date.now() / 1000)
+  });
+  return result === "OK";
+};
+const verifyEmail = async (token: string) => {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as { email: string };
+  const user = await User.findOne({ email: decoded.email });
+  if (!user) {
+    throw new Error("User not found");
+  }
+  user.isVerify = true;
+  return await user.save();
+};
 
 const getAllUsers = async (): Promise<IUser[]> => {
   try {
@@ -53,5 +79,7 @@ const getAllUsers = async (): Promise<IUser[]> => {
 export default {
   registerUser,
   signIn,
-  getAllUsers
+  verifyEmail,
+  getAllUsers,
+  logoutUser
 };

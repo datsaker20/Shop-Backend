@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/nodemailer": "^6.4.17",
     "axios": "^1.8.1",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -43,6 +44,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.13.1",
     "mongoose": "^8.10.2",
+    "nodemailer": "^6.10.0",
+    "redis": "^4.7.0",
     "server": "file:",
     "winston": "^3.17.0"
   }
