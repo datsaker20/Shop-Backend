@@ -36,14 +36,15 @@ export const verifyToken = (roles: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
-      res.status(401).json({ message: "Bearer token is missing" });
+      res.status(HttpStatusCode.Unauthorized).json({
+        statusCode: HttpStatusCode.Unauthorized,
+        message: "Bearer token is missing"
+      });
       return;
     }
 
     try {
       const token = authHeader.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as jwt.JwtPayload;
-      req.user = decoded as IUser;
       // Check if token is blacklisted
       const isBlacklisted = await redisClient.get(`blacklist:${token}`);
       if (isBlacklisted) {
@@ -53,6 +54,16 @@ export const verifyToken = (roles: string[]) => {
         });
         return;
       }
+      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as jwt.JwtPayload;
+      const currentSession = await redisClient.get(`session:${decoded.id}`);
+      if (!currentSession || currentSession !== token) {
+        res.status(HttpStatusCode.Unauthorized).json({
+          statusCode: HttpStatusCode.Unauthorized,
+          message: "Session expired or logged in from another device"
+        });
+        return;
+      }
+
       if (decoded.isAdmin && roles.includes("Admin")) {
         next();
         return;

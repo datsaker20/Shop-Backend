@@ -28,8 +28,8 @@ const registerUser = async (req: Request, res: Response) => {
 
 const loginUser = async (req: Request, res: Response) => {
   try {
-    const user = req.body;
-    const token = await userService.signIn(user);
+    const { email, password } = req.body;
+    const token = await userService.signIn({ email, password });
     res.cookie("refreshToken", token.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -111,6 +111,57 @@ const logoutUser = async (req: Request, res: Response) => {
     });
   }
 };
+
+const forgetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    await userService.forgetPassword(email);
+
+    res.status(HttpStatusCode.Ok).json({
+      statusCode: HttpStatusCode.Ok,
+      message: "Please check your email to reset password"
+    });
+  } catch (error: unknown) {
+    console.log(error);
+
+    let statusCode = HttpStatusCode.InternalServerError;
+    let message = "Internal Server Error";
+    if (error instanceof Error) {
+      message = error.message;
+      if (message.includes("not found")) {
+        statusCode = HttpStatusCode.BadRequest;
+      }
+    }
+    res.status(statusCode).json({
+      statusCode: statusCode,
+      message,
+      path: req.originalUrl
+    });
+  }
+};
+
+const resetPassword = async (req: Request, res: Response) => {
+  const { token } = req.query;
+  const { password } = req.body;
+  try {
+    await userService.resetPassword(token as string, password);
+    res.status(HttpStatusCode.Ok).json({
+      statusCode: HttpStatusCode.Ok,
+      message: "Reset password successfully"
+    });
+  } catch (error) {
+    const statusCode = HttpStatusCode.InternalServerError;
+    let message = "Internal Server Error";
+    if (error instanceof Error) {
+      message = error.message;
+    }
+    res.status(statusCode).json({
+      statusCode: statusCode,
+      message,
+      path: req.originalUrl
+    });
+  }
+};
 const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await userService.getAllUsers();
@@ -133,4 +184,4 @@ const getAllUsers = async (req: Request, res: Response) => {
   }
 };
 
-export default { registerUser, loginUser, verifyEmail, getAllUsers, logoutUser };
+export default { registerUser, loginUser, verifyEmail, getAllUsers, logoutUser, forgetPassword, resetPassword };

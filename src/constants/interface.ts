@@ -28,3 +28,8 @@ export interface IResponseOject {
   message: string;
   path?: string;
 }
+
+export interface IPassword {
+  password: string;
+  confirmPassword: string;
+}

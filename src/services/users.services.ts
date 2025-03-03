@@ -1,10 +1,12 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { ObjectId } from "mongoose";
 import { IToken, IUserLogin } from "~/constants/interface";
 import { generateToken, registerValidator } from "~/middlewares/auth.middlewares";
 import { IUser, User } from "~/models/db/User";
-import { sendVerificationEmail } from "~/utils/email";
+import { sendResetPasswordEmail, sendVerificationEmail } from "~/utils/email";
+
 import redisClient from "~/utils/redis";
 
 const registerUser = async (user: IUser): Promise<IUser> => {
@@ -42,6 +44,12 @@ const signIn = async (user: IUserLogin): Promise<IToken> => {
     }
 
     const token = generateToken(userLogin);
+    const oldSessionId = await redisClient.get(`session:${userLogin.id}`);
+    if (oldSessionId) {
+      await redisClient.setEx(`blacklist:${oldSessionId}`, 7 * 24 * 60 * 60, "blacklisted");
+    }
+
+    await redisClient.setEx(`session:${userLogin.id}`, 7 * 24 * 60 * 60, token.token);
     return token;
   } catch (error) {
     throw new Error(`Authentication failed: ${(error as Error).message}`);
@@ -51,6 +59,7 @@ const logoutUser = async (token: string): Promise<boolean> => {
   // Remove token from blacklist
   const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as jwt.JwtPayload;
 
+  await redisClient.del(`session:${decoded.id}`);
   const exp = decoded.exp ?? Math.floor(Date.now() / 1000) + 3600; //
   // Set token to blacklist
   const result = await redisClient.set(`blacklist:${token}`, "logout", {
@@ -68,9 +77,31 @@ const verifyEmail = async (token: string) => {
   return await user.save();
 };
 
+const forgetPassword = async (email: string): Promise<void> => {
+  const user = await User.findOne({ email });
+  console.log(user);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  await redisClient.setEx(`resetPassword:${resetToken}`, 900, user.id.toString());
+  await sendResetPasswordEmail(email, resetToken);
+};
+
+const resetPassword = async (token: string, password: string): Promise<void> => {
+  const userId = await redisClient.get(`resetPassword:${token}`);
+  if (!userId) {
+    throw new Error("Token is invalid or expired");
+  }
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  await User.findByIdAndUpdate(userId, { password: hashedPassword });
+  await redisClient.del(`resetPassword:${token}`);
+};
 const getAllUsers = async (): Promise<IUser[]> => {
   try {
     const users = await User.find({});
+
     return users;
   } catch (error) {
     throw new Error(`Get all users failed: ${(error as Error).message}`);
@@ -81,5 +112,7 @@ export default {
   signIn,
   verifyEmail,
   getAllUsers,
+  forgetPassword,
+  resetPassword,
   logoutUser
 };
