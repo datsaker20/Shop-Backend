@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import fs from "fs";
 import jwt from "jsonwebtoken";
 import { ObjectId } from "mongoose";
 import { IToken, IUserLogin } from "~/constants/interface";
@@ -107,6 +108,30 @@ const getAllUsers = async (): Promise<IUser[]> => {
     throw new Error(`Get all users failed: ${(error as Error).message}`);
   }
 };
+
+const updateUser = async (id: string, user: Partial<IUser>, file?: Express.Multer.File): Promise<IUser> => {
+  try {
+    const updatedUser = await User.findByIdAndUpdate(id, user, {
+      new: true
+    });
+    if (!updatedUser) {
+      throw new Error("User not found");
+    }
+    if (file) {
+      if (updatedUser.avatar) {
+        const oldPath = `uploads/avatars/${updatedUser.avatar}`;
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+      updatedUser.avatar = file.filename;
+    }
+    updatedUser.save();
+    return updatedUser;
+  } catch (error) {
+    throw new Error(`Update user failed: ${(error as Error).message}`);
+  }
+};
 export default {
   registerUser,
   signIn,
@@ -114,5 +139,6 @@ export default {
   getAllUsers,
   forgetPassword,
   resetPassword,
-  logoutUser
+  logoutUser,
+  updateUser
 };

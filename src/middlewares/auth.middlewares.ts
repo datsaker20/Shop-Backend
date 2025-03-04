@@ -55,6 +55,7 @@ export const verifyToken = (roles: string[]) => {
         return;
       }
       const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as jwt.JwtPayload;
+      req.user = decoded as IUser;
       const currentSession = await redisClient.get(`session:${decoded.id}`);
       if (!currentSession || currentSession !== token) {
         res.status(HttpStatusCode.Unauthorized).json({

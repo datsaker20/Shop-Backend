@@ -1,5 +1,11 @@
 import { IUser } from "~/models/db/User";
-
+import { Role } from "./enum";
+export interface IRequestUser {
+  id: string;
+  email: string;
+  userName: string;
+  role: Role;
+}
 export interface IToken {
   token: string;
   refreshToken: string;

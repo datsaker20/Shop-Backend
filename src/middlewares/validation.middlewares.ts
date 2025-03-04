@@ -1,6 +1,7 @@
 import { AxiosError, HttpStatusCode } from "axios";
 import { NextFunction, Request, RequestHandler, Response } from "express";
 import mongoose from "mongoose";
+import { MulterError } from "multer";
 
 const cors = { origin: "*" };
 
@@ -63,4 +64,30 @@ export const notFoundHandler = (req: Request, res: Response, next: NextFunction)
     message: `Route ${req.originalUrl} not found`
   });
   next();
+};
+
+export const errorHandlerImage = (err: Error, req: Request, res: Response, next: NextFunction) => {
+  if (err.message === "Only image files are allowed!") {
+    res.status(HttpStatusCode.BadRequest).json({
+      statusCode: HttpStatusCode.BadRequest,
+      message: err.message
+    });
+    return;
+  }
+  if (err instanceof MulterError) {
+    res.status(HttpStatusCode.BadRequest).json({
+      statusCode: HttpStatusCode.BadRequest,
+      message: `Multer error: ${err.message}`
+    });
+    return;
+  }
+
+  if (err instanceof Error) {
+    res.status(HttpStatusCode.Forbidden).json({
+      statusCode: HttpStatusCode.Forbidden,
+      message: err.message
+    });
+    return;
+  }
+  next(err);
 };

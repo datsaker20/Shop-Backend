@@ -1,5 +1,6 @@
 import { HttpStatusCode } from "axios";
 import { Request, Response } from "express";
+import { IUser } from "~/models/db/User";
 import userService from "~/services/users.services";
 
 const registerUser = async (req: Request, res: Response) => {
@@ -184,4 +185,51 @@ const getAllUsers = async (req: Request, res: Response) => {
   }
 };
 
-export default { registerUser, loginUser, verifyEmail, getAllUsers, logoutUser, forgetPassword, resetPassword };
+const updateUser = async (req: Request, res: Response) => {
+  try {
+    const id = req.query.id as string;
+    if (req.user) {
+      if (req.user.id !== id && !req.user.isAdmin) {
+        res.status(HttpStatusCode.Forbidden).json({
+          statusCode: HttpStatusCode.Forbidden,
+          message: "Permission denied"
+        });
+        return;
+      }
+    }
+    const { userName, fullName, email, phone, address } = req.body;
+    const user: Partial<IUser> = { userName, fullName, email, phone, address };
+    const updatedUser = await userService.updateUser(id, user, req.file);
+    console.log(updatedUser);
+
+    res.status(HttpStatusCode.Ok).json({
+      statusCode: HttpStatusCode.Ok,
+      message: "Update user successfully",
+      data: updatedUser
+    });
+    return;
+  } catch (error: unknown) {
+    const statusCode = HttpStatusCode.InternalServerError;
+    let message = "Internal Server Error";
+    if (error instanceof Error) {
+      message = error.message;
+    }
+    res.status(statusCode).json({
+      statusCode,
+      message,
+      path: req.originalUrl
+    });
+    return;
+  }
+};
+
+export default {
+  registerUser,
+  loginUser,
+  verifyEmail,
+  getAllUsers,
+  logoutUser,
+  forgetPassword,
+  resetPassword,
+  updateUser
+};

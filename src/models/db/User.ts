@@ -11,11 +11,12 @@ export interface IUser extends Document {
   avatar?: string;
   isDelete: boolean;
   isVerify: boolean;
+  isAdmin: boolean;
 }
 
 const userSchema = new Schema<IUser>(
   {
-    userName: { type: String, required: true, unique: true, rim: true, minlength: 6, maxlength: 30 },
+    userName: { type: String, required: true, unique: true, rim: true, minlength: 6, maxLength: 30 },
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true, email: true, trim: true, lowercase: true },
     password: { type: String, required: true, minLength: 6 },
