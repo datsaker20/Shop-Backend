@@ -7,9 +7,9 @@ const uri = process.env.MONGO_URI ?? "mongodb://localhost:27017/shop";
 export const connectDB = async () => {
   try {
     const conn = await mongoose.connect(uri);
-    logger.info(`${logDate} MongoDB Connected: ${conn.connection.host} ${uri}`);
+    logger.info(`${logDate} ✅ MongoDB Connected: ${conn.connection.host} ${uri}`);
   } catch (error) {
-    logger.error(`${logDate} ${error}`);
+    logger.error(`${logDate} ❌ Failed to connect to MongoDB: ${error}`);
     process.exit(1);
   }
 };

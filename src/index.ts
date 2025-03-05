@@ -25,6 +25,10 @@ app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 app.use(morgan("dev"));
 app.use(cors);
 app.use("/static/image", express.static(path.join(__dirname, "../uploads/avatars")));
+app.get("/reset-password", (req, res) => {
+  res.sendFile(path.join(__dirname, "./utils/resetPassword.html"));
+});
+
 app.use("/api/v1", routers);
 
 app.use(errorHandlerImage);
@@ -37,10 +41,10 @@ const startServer = async () => {
   try {
     await connectDB();
     app.listen(PORT, () => {
-      logger.info(`${logDate} Server running on port ${PORT}`);
+      logger.info(`${logDate} ✅ Server running on port ${PORT}`);
     });
   } catch (error) {
-    logger.error("❌ Failed to start server:", error);
+    logger.error(`${logDate} ❌ Failed to start server: ${error}`);
     process.exit(1);
   }
 };

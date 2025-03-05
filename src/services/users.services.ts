@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import fs from "fs";
 import jwt from "jsonwebtoken";
 import { ObjectId } from "mongoose";
+import { v4 as uuidv4 } from "uuid";
 import { IPassword, IToken, IUserLogin } from "~/constants/interface";
 import { generateToken, registerValidator } from "~/middlewares/auth.middlewares";
 import { IUser, User } from "~/models/db/User";
@@ -83,7 +83,7 @@ const forgetPassword = async (email: string): Promise<void> => {
   if (!user) {
     throw new Error("User not found");
   }
-  const resetToken = crypto.randomBytes(32).toString("hex");
+  const resetToken = uuidv4();
   await redisClient.setEx(`resetPassword:${resetToken}`, 900, user.id.toString());
   await sendResetPasswordEmail(email, resetToken);
 };

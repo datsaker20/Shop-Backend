@@ -52,6 +52,7 @@
     "nodemailer": "^6.10.0",
     "redis": "^4.7.0",
     "server": "file:",
+    "uuid": "^11.1.0",
     "winston": "^3.17.0"
   }
 }

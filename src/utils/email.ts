@@ -34,15 +34,25 @@ export const sendResetPasswordEmail = async (email: string, token: string) => {
     }
   });
 
-  const resetLink = `http://localhost:3000/api/v1/users/reset-password?token=${token}`;
+  const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+  const htmlTemplate = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+        <h2 style="color: #333;">Reset Your Password</h2>
+        <p>You have requested to reset your password. Click the button below to proceed:</p>
+        <p style="text-align: center;">
+            <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+                Reset Password
+            </a>
+        </p>
+        <p>If you did not request this, please ignore this email.</p>
+        <p style="color: red;"><strong>Note:</strong> This link will expire in 15 minutes.</p>
+    </div>
+  `;
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
     subject: "Reset Your Password",
-    html: `<p>Click the link below to reset your password:</p>
-           <a href="${resetLink}">${resetLink}</a>
-           <p>This link will expire in 15 minutes.</p>`
+    html: htmlTemplate
   };
-
   await transporter.sendMail(mailOptions);
 };
