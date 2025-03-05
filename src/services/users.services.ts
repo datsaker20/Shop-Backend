@@ -3,12 +3,12 @@ import crypto from "crypto";
 import fs from "fs";
 import jwt from "jsonwebtoken";
 import { ObjectId } from "mongoose";
-import { IToken, IUserLogin } from "~/constants/interface";
+import { IPassword, IToken, IUserLogin } from "~/constants/interface";
 import { generateToken, registerValidator } from "~/middlewares/auth.middlewares";
 import { IUser, User } from "~/models/db/User";
 import { sendResetPasswordEmail, sendVerificationEmail } from "~/utils/email";
-
 import redisClient from "~/utils/redis";
+const salt = bcrypt.genSaltSync(10);
 
 const registerUser = async (user: IUser): Promise<IUser> => {
   const existingUser = await User.findOne({ email: user.email }).select("_id");
@@ -23,7 +23,6 @@ const registerUser = async (user: IUser): Promise<IUser> => {
   if (existingUser) {
     throw new Error("Email already exists");
   }
-  const salt = bcrypt.genSaltSync(10);
   const hashedPassword = bcrypt.hashSync(user.password, salt);
   const newUser = new User({ ...user, password: hashedPassword });
   await newUser.save();
@@ -80,7 +79,6 @@ const verifyEmail = async (token: string) => {
 
 const forgetPassword = async (email: string): Promise<void> => {
   const user = await User.findOne({ email });
-  console.log(user);
 
   if (!user) {
     throw new Error("User not found");
@@ -109,27 +107,61 @@ const getAllUsers = async (): Promise<IUser[]> => {
   }
 };
 
-const updateUser = async (id: string, user: Partial<IUser>, file?: Express.Multer.File): Promise<IUser> => {
+const updateUser = async (
+  id: string,
+  user: Partial<IUser>,
+  file?: Express.Multer.File,
+  password?: IPassword
+): Promise<IUser> => {
   try {
-    const updatedUser = await User.findByIdAndUpdate(id, user, {
-      new: true
-    });
+    if (password) {
+      const user = await User.findById(id);
+      if (!user) throw new Error("User not found");
+      const isMatch = bcrypt.compareSync(password.password, user.password);
+      if (!isMatch) throw new Error("Old password is incorrect");
+      if (password.newPassword !== password.confirmPassword)
+        throw new Error("New password and confirm password do not match");
+      const hashedPassword = bcrypt.hashSync(password.newPassword, salt);
+      user.password = hashedPassword;
+      user.save();
+    }
+    const updatedUser = await User.findByIdAndUpdate(id, user, { new: true }).select(
+      "-password -role -isVerify -isDelete"
+    );
     if (!updatedUser) {
       throw new Error("User not found");
     }
     if (file) {
       if (updatedUser.avatar) {
         const oldPath = `uploads/avatars/${updatedUser.avatar}`;
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
       updatedUser.avatar = file.filename;
+      updatedUser.save();
     }
-    updatedUser.save();
     return updatedUser;
   } catch (error) {
     throw new Error(`Update user failed: ${(error as Error).message}`);
+  }
+};
+
+const getUserByEmail = async (email: string): Promise<IUser | null> => {
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select(
+    "-password -role -isVerify -isDelete -__v -_id"
+  );
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return user;
+};
+
+const deleteUser = async (id: string): Promise<void> => {
+  try {
+    await User.findByIdAndUpdate(id, { isDelete: true }, { new: true });
+  } catch (error) {
+    throw new Error(`Delete user failed: ${(error as Error).message}`);
   }
 };
 export default {
@@ -140,5 +172,7 @@ export default {
   forgetPassword,
   resetPassword,
   logoutUser,
-  updateUser
+  updateUser,
+  getUserByEmail,
+  deleteUser
 };

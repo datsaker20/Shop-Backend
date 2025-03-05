@@ -37,5 +37,6 @@ export interface IResponseOject {
 
 export interface IPassword {
   password: string;
+  newPassword: string;
   confirmPassword: string;
 }

@@ -18,7 +18,7 @@ const storage: StorageEngine = multer.diskStorage({
       return cb(new Error("Unauthorized: No user found"), "");
     }
     if (req.user.id !== req.query.id && !req.user.isAdmin) {
-      return cb(new Error("Permission denied: Cannot update another user's avatar"), "");
+      return cb(new Error("You don't have permission to upload avatar"), "");
     }
     cb(null, "uploads/avatars/");
   },

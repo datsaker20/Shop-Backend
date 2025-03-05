@@ -11,7 +11,6 @@ dotenv.config();
 
 export const generateToken = (user: IUser): IToken => {
   const secretKey = process.env.JWT_SECRET_KEY;
-  console.log(secretKey);
 
   if (!secretKey) {
     throw new Error("JWT secret key is missing");
@@ -75,9 +74,10 @@ export const verifyToken = (roles: string[]) => {
       }
       res.status(HttpStatusCode.Forbidden).json({
         statusCode: HttpStatusCode.Forbidden,
-        message: "Permission denied",
+        message: "You are not allowed to access this resource",
         path: req.originalUrl
       });
+      return;
     } catch (error) {
       res.status(HttpStatusCode.Forbidden).json({
         statusCode: HttpStatusCode.Forbidden,
